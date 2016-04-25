@@ -23,7 +23,7 @@
 	   <bean id="sequenceDao" class="com.sunney.modules.sequence.impl.DefaultSequenceDao"
 			lazy-init="default" autowire="default" dependency-check="default">
 			<property name="dataSource">
-				<ref bean="DBCOMM" /> --数据源，必须正确
+				<ref bean="DBCOMM" /> <!--数据源，必须正确-->
 			</property>
 			<!-- 以下是这个DAO所有的可选配置，其value是默认的配置 一般来说不用去动他们，和DBA商量好使用这些默认的值就行了 retryTimes表示重试次数，因为是乐观锁去取，所以会有最大重试次数，如果超过这个次数会抛出一个异常。 
 				step 表示一次更新数据库的值是多少，默认是1000 tableName 表示这个表在数据库中的名字 nameColumnName 表示这个sequence名字那列在数据库中的列名 
