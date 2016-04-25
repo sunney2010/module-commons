@@ -21,7 +21,7 @@
 		<property name="maxWait" value="1500" />
 	</bean>
 
-	<bean id="sequenceDao" class="com.taobao.tddl.client.sequence.impl.DefaultSequenceDao"
+	<bean id="sequenceDao" class="com.sunney.modules.sequence.impl.DefaultSequenceDao"
 		lazy-init="default" autowire="default" dependency-check="default">
 		<property name="dataSource">
 			<ref bean="DBCOMM" />
@@ -48,15 +48,10 @@
 			<value>gmt_modified</value>
 		</property>
 	</bean>
-	<!-- 对应一个sequence -->
-	<bean id="sequence" class="com.taobao.tddl.client.sequence.impl.DefaultSequence"
+	<bean id="sequence" class="com.sunney.modules.sequence.impl.DefaultSequence"
 		lazy-init="default" autowire="default" dependency-check="default">
 		<property name="sequenceDao">
 			<ref bean="sequenceDao" />
-		</property>
-		<!-- 这个sequence的名字，也就是在数据库中的那行数据中name列所对应的值 -->
-		<property name="name">
-			<value>xdh</value>
 		</property>
 	</bean>
 </beans>
