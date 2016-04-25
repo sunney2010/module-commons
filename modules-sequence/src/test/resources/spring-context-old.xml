@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="gb2312"?>
+<!DOCTYPE beans PUBLIC "-//SPRING//DTD BEAN//EN" "http://www.springframework.org/dtd/spring-beans.dtd">
+<beans>
+	<bean id="DBCOMM" class="com.alibaba.druid.pool.DruidDataSource" init-method="init" destroy-method="close">
+		<property name="driverClassName">
+			<value>com.mysql.jdbc.Driver</value>
+		</property>
+		<property name="url">
+			<value>jdbc:mysql://127.0.0.1:3306/diamond</value>
+		</property>
+		<property name="username">
+			<value>root</value>
+		</property>
+		<property name="password">
+			<value>sunney</value>
+		</property>
+		<property name="maxActive" value="100" />
+		<property name="initialSize" value="1" />
+		<property name="maxIdle" value="-1" />
+		<property name="minIdle" value="-1" />
+		<property name="maxWait" value="1500" />
+	</bean>
+
+	<bean id="sequenceDao" class="com.taobao.tddl.client.sequence.impl.DefaultSequenceDao"
+		lazy-init="default" autowire="default" dependency-check="default">
+		<property name="dataSource">
+			<ref bean="DBCOMM" />
+		</property>
+		<!-- 以下是这个DAO所有的可选配置，其value是默认的配置 一般来说不用去动他们，和DBA商量好使用这些默认的值就行了 retryTimes表示重试次数，因为是乐观锁去取，所以会有最大重试次数，如果超过这个次数会抛出一个异常。 
+			step 表示一次更新数据库的值是多少，默认是1000 tableName 表示这个表在数据库中的名字 nameColumnName 表示这个sequence名字那列在数据库中的列名 
+			nameColumnName 表示这个sequence的值那列在数据库中的列名 gmtModifiedColumnName 表示最后修改时间那个列的在数据库中的列名 -->
+		<property name="retryTimes">
+			<value>3</value>
+		</property>
+		<property name="step">
+			<value>1000</value>
+		</property>
+		<property name="tableName">
+			<value>sequence</value>
+		</property>
+		<property name="nameColumnName">
+			<value>name</value>
+		</property>
+		<property name="valueColumnName">
+			<value>value</value>
+		</property>
+		<property name="gmtModifiedColumnName">
+			<value>gmt_modified</value>
+		</property>
+	</bean>
+	<!-- 对应一个sequence -->
+	<bean id="sequence" class="com.taobao.tddl.client.sequence.impl.DefaultSequence"
+		lazy-init="default" autowire="default" dependency-check="default">
+		<property name="sequenceDao">
+			<ref bean="sequenceDao" />
+		</property>
+		<!-- 这个sequence的名字，也就是在数据库中的那行数据中name列所对应的值 -->
+		<property name="name">
+			<value>xdh</value>
+		</property>
+	</bean>
+</beans>
