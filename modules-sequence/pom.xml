@@ -9,7 +9,7 @@
   </parent>
   <groupId>com.sunney</groupId>
   <artifactId>modules-sequence</artifactId>
-  <version>1.0-SNAPSHOT</version>
+  <version>1.0</version>
   <name>modules-sequence</name>
   <url>http://maven.apache.org</url>
   <dependencies>

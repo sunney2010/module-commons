@@ -41,6 +41,8 @@ public class DefaultSequenceDao extends AbstractLifecycle implements SequenceDao
     private static final String DEFAULT_TABLE_NAME               = "sequence";
     private static final String DEFAULT_NAME_COLUMN_NAME         = "name";
     private static final String DEFAULT_VALUE_COLUMN_NAME        = "value";
+    private static final String DEFAULT_STEP_COLUMN_NAME         = "step";
+    private static final String DEFAULT_RETRY_COLUMN_NAME        = "retryTimes";
     private static final String DEFAULT_GMT_MODIFIED_COLUMN_NAME = "gmt_modified";
 
     private static final long   DELTA                            = 100000000L;
@@ -73,6 +75,16 @@ public class DefaultSequenceDao extends AbstractLifecycle implements SequenceDao
     private String              valueColumnName                  = DEFAULT_VALUE_COLUMN_NAME;
 
     /**
+     * 存储序列值的列名
+     */
+    private String              stepColumnName                   = DEFAULT_STEP_COLUMN_NAME;
+
+    /**
+     * 存储序列值的列名
+     */
+    private String              retryTimesColumnName             = DEFAULT_RETRY_COLUMN_NAME;
+
+    /**
      * 存储序列最后更新时间的列名
      */
     private String              gmtModifiedColumnName            = DEFAULT_GMT_MODIFIED_COLUMN_NAME;
@@ -90,7 +102,6 @@ public class DefaultSequenceDao extends AbstractLifecycle implements SequenceDao
 
         long oldValue;
         long newValue;
-
         Connection conn = null;
         PreparedStatement stmt = null;
         ResultSet rs = null;
@@ -101,9 +112,14 @@ public class DefaultSequenceDao extends AbstractLifecycle implements SequenceDao
                 stmt = conn.prepareStatement(getSelectSql());
                 stmt.setString(1, name);
                 rs = stmt.executeQuery();
-                rs.next();
+                if (rs == null || !rs.next()) {
+                    boolean val = insertSql(conn, stmt, name);
+                    if (val) {
+                        continue;
+                    }
+                }
                 oldValue = rs.getLong(1);
-
+                step=rs.getInt(2);
                 if (oldValue < 0) {
                     StringBuilder message = new StringBuilder();
                     message.append("Sequence value cannot be less than zero, value = ").append(oldValue);
@@ -164,7 +180,7 @@ public class DefaultSequenceDao extends AbstractLifecycle implements SequenceDao
             synchronized (this) {
                 if (selectSql == null) {
                     StringBuilder buffer = new StringBuilder();
-                    buffer.append("select ").append(getValueColumnName());
+                    buffer.append("select ").append(getValueColumnName()).append(",").append(getStepColumnName());
                     buffer.append(" from ").append(getTableName());
                     buffer.append(" where ").append(getNameColumnName()).append(" = ?");
 
@@ -195,22 +211,55 @@ public class DefaultSequenceDao extends AbstractLifecycle implements SequenceDao
         return updateSql;
     }
 
+    private boolean insertSql(Connection conn, PreparedStatement stmt, String name) throws SequenceException {
+        boolean val = false;
+        try {
+            conn = dataSource.getConnection();
+            stmt = conn.prepareStatement(getInsertSql());
+            stmt.setString(1, name);
+            stmt.setLong(2, 1);
+            stmt.setTimestamp(3, new Timestamp(System.currentTimeMillis()));
+            stmt.setLong(4, step);
+            stmt.setLong(5, retryTimes);
+            stmt.executeUpdate();
+            val = true;
+        } catch (SQLException e) {
+            val = false;
+            throw new SequenceException(e);
+        } finally {
+            closeStatement(stmt);
+            stmt = null;
+            closeConnection(conn);
+            conn = null;
+        }
+        return val;
+    }
+
+    /**
+     * 当没有记录集时可以执行插入操作
+     * 
+     * @return
+     */
     private String getInsertSql() {
         if (insertSql == null) {
             synchronized (this) {
                 if (insertSql == null) {
                     StringBuilder buffer = new StringBuilder();
                     buffer.append("insert into ").append(getTableName());
-                    buffer.append("( ").append(DEFAULT_VALUE_COLUMN_NAME).append(",").append(DEFAULT_NAME_COLUMN_NAME).append(",");
-                    buffer.append(DEFAULT_GMT_MODIFIED_COLUMN_NAME).append(")");
-                    buffer.append(" VALUES(?, ? ,?");
-
+                    buffer.append("( ");
+                    buffer.append(getNameColumnName()).append(",");
+                    buffer.append(getValueColumnName()).append(",");
+                    buffer.append(getGmtModifiedColumnName()).append(",");
+                    buffer.append(getStepColumnName()).append(",");
+                    buffer.append(getRetryTimesColumnName());
+                    buffer.append(")");
+                    buffer.append(" VALUES(?, ? ,?,?,?)");
                     insertSql = buffer.toString();
                 }
             }
         }
 
-        return updateSql;
+        return insertSql;
     }
 
     private static void closeResultSet(ResultSet rs) {
@@ -316,6 +365,34 @@ public class DefaultSequenceDao extends AbstractLifecycle implements SequenceDao
 
     public void setGmtModifiedColumnName(String gmtModifiedColumnName) {
         this.gmtModifiedColumnName = gmtModifiedColumnName;
+    }
+
+    /**
+     * @return the stepColumnName
+     */
+    public String getStepColumnName() {
+        return stepColumnName;
+    }
+
+    /**
+     * @param stepColumnName the stepColumnName to set
+     */
+    public void setStepColumnName(String stepColumnName) {
+        this.stepColumnName = stepColumnName;
+    }
+
+    /**
+     * @return the retryTimesColumnName
+     */
+    public String getRetryTimesColumnName() {
+        return retryTimesColumnName;
+    }
+
+    /**
+     * @param retryTimesColumnName the retryTimesColumnName to set
+     */
+    public void setRetryTimesColumnName(String retryTimesColumnName) {
+        this.retryTimesColumnName = retryTimesColumnName;
     }
 
     public String getConfigStr() {
