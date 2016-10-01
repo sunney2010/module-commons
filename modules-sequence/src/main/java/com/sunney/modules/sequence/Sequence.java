@@ -38,11 +38,11 @@ public interface Sequence {
      * @return
      * @throws SequenceException
      */
-    long nextValue(int size) throws SequenceException;
+    long nextValue(String SequenceName,int size) throws SequenceException;
 
     /**
      * 消耗掉当前内存中已分片的sequence
      */
-    public boolean exhaustValue() throws SequenceException;
+    public boolean exhaustValue(String SequenceName) throws SequenceException;
 }
 

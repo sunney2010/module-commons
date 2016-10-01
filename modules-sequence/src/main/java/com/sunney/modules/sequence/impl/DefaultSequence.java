@@ -5,6 +5,8 @@
  */
 package com.sunney.modules.sequence.impl;
 
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import com.sunney.modules.sequence.Sequence;
@@ -19,25 +21,27 @@ import com.sunney.modules.sequence.exception.SequenceException;
  */
 public class DefaultSequence implements Sequence {
 
-    private final Lock             lock = new ReentrantLock();
+    private final Lock                 lock   = new ReentrantLock();
 
-    private SequenceDao            sequenceDao;
+    private SequenceDao                sequenceDao;
 
     /**
      * 默认的序列名称
      */
-    private String                 name;
-
-    private volatile SequenceRange currentRange;
+    private String                     name;
+    private volatile SequenceRange     currentRange;
+    private Map<String, SequenceRange> valMap = new ConcurrentHashMap<String, SequenceRange>();
+    
 
     @Override
     public long nextValue(String SequenceName) throws SequenceException {
-
+        currentRange = valMap.get(SequenceName);
         if (currentRange == null) {
             lock.lock();
             try {
                 if (currentRange == null) {
                     currentRange = sequenceDao.nextRange(SequenceName);
+                    valMap.put(SequenceName, currentRange);
                 }
             } finally {
                 lock.unlock();
@@ -51,6 +55,7 @@ public class DefaultSequence implements Sequence {
                 for (;;) {
                     if (currentRange.isOver()) {
                         currentRange = sequenceDao.nextRange(SequenceName);
+                        valMap.put(SequenceName, currentRange);
                     }
 
                     value = currentRange.getAndIncrement();
@@ -77,16 +82,17 @@ public class DefaultSequence implements Sequence {
     }
 
     @Override
-    public long nextValue(int size) throws SequenceException {
+    public long nextValue(String SequenceName,int size) throws SequenceException {
         if (size > this.getSequenceDao().getStep()) {
             throw new SequenceException("batch size > sequence step step, please change batch size or sequence inner step");
         }
-
+        currentRange=valMap.get(SequenceName);
         if (currentRange == null) {
             lock.lock();
             try {
                 if (currentRange == null) {
                     currentRange = sequenceDao.nextRange(name);
+                    valMap.put(SequenceName, currentRange);
                 }
             } finally {
                 lock.unlock();
@@ -100,6 +106,7 @@ public class DefaultSequence implements Sequence {
                 for (;;) {
                     if (currentRange.isOver()) {
                         currentRange = sequenceDao.nextRange(name);
+                        valMap.put(SequenceName, currentRange);
                     }
 
                     value = currentRange.getBatch(size);
@@ -122,12 +129,14 @@ public class DefaultSequence implements Sequence {
     }
 
     @Override
-    public boolean exhaustValue() throws SequenceException {
+    public boolean exhaustValue(String SequenceName) throws SequenceException {
         lock.lock();
         try {
+            currentRange=valMap.get(SequenceName);
             if (currentRange != null) {
                 // 强制设置为已用完
                 currentRange.setOver(true);
+                valMap.put(SequenceName, currentRange);
             }
         } finally {
             lock.unlock();
